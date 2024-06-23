@@ -1,4 +1,4 @@
-/* создание таблицы tmp_sources с данными из всех источников */
+/* СЃРѕР·РґР°РЅРёРµ С‚Р°Р±Р»РёС†С‹ tmp_sources СЃ РґР°РЅРЅС‹РјРё РёР· РІСЃРµС… РёСЃС‚РѕС‡РЅРёРєРѕРІ */
 DROP TABLE IF EXISTS tmp_sources;
 CREATE TEMP TABLE tmp_sources AS 
 SELECT  order_id,
@@ -89,7 +89,7 @@ SELECT  t1.order_id,
   FROM external_source.craft_products_orders t1
     JOIN external_source.customers t2 ON t1.customer_id = t2.customer_id;
    
-/* обновление существующих записей и добавление новых в dwh.d_craftsmans */
+/* РѕР±РЅРѕРІР»РµРЅРёРµ СЃСѓС‰РµСЃС‚РІСѓСЋС‰РёС… Р·Р°РїРёСЃРµР№ Рё РґРѕР±Р°РІР»РµРЅРёРµ РЅРѕРІС‹С… РІ dwh.d_craftsmans */
 MERGE INTO dwh.d_craftsman d
 USING (SELECT DISTINCT craftsman_name, craftsman_address, craftsman_birthday, craftsman_email FROM tmp_sources) t
 ON d.craftsman_name = t.craftsman_name AND d.craftsman_email = t.craftsman_email
@@ -100,7 +100,7 @@ WHEN NOT MATCHED THEN
   INSERT (craftsman_name, craftsman_address, craftsman_birthday, craftsman_email, load_dttm)
   VALUES (t.craftsman_name, t.craftsman_address, t.craftsman_birthday, t.craftsman_email, current_timestamp);
 
-/* обновление существующих записей и добавление новых в dwh.d_products */
+/* РѕР±РЅРѕРІР»РµРЅРёРµ СЃСѓС‰РµСЃС‚РІСѓСЋС‰РёС… Р·Р°РїРёСЃРµР№ Рё РґРѕР±Р°РІР»РµРЅРёРµ РЅРѕРІС‹С… РІ dwh.d_products */
 MERGE INTO dwh.d_product d
 USING (SELECT DISTINCT product_name, product_description, product_type, product_price from tmp_sources) t
 ON d.product_name = t.product_name AND d.product_description = t.product_description AND d.product_price = t.product_price
@@ -110,7 +110,7 @@ WHEN NOT MATCHED THEN
   INSERT (product_name, product_description, product_type, product_price, load_dttm)
   VALUES (t.product_name, t.product_description, t.product_type, t.product_price, current_timestamp);
 
-/* обновление существующих записей и добавление новых в dwh.d_customer */
+/* РѕР±РЅРѕРІР»РµРЅРёРµ СЃСѓС‰РµСЃС‚РІСѓСЋС‰РёС… Р·Р°РїРёСЃРµР№ Рё РґРѕР±Р°РІР»РµРЅРёРµ РЅРѕРІС‹С… РІ dwh.d_customer */
 MERGE INTO dwh.d_customer d
 USING (SELECT DISTINCT customer_name, customer_address, customer_birthday, customer_email from tmp_sources) t
 ON d.customer_name = t.customer_name AND d.customer_email = t.customer_email
@@ -121,7 +121,7 @@ WHEN NOT MATCHED THEN
   INSERT (customer_name, customer_address, customer_birthday, customer_email, load_dttm)
   VALUES (t.customer_name, t.customer_address, t.customer_birthday, t.customer_email, current_timestamp);
 
-/* создание таблицы tmp_sources_fact */
+/* СЃРѕР·РґР°РЅРёРµ С‚Р°Р±Р»РёС†С‹ tmp_sources_fact */
 DROP TABLE IF EXISTS tmp_sources_fact;
 CREATE TEMP TABLE tmp_sources_fact AS 
 SELECT  dp.product_id,
@@ -136,7 +136,7 @@ JOIN dwh.d_craftsman dc ON dc.craftsman_name = src.craftsman_name and dc.craftsm
 JOIN dwh.d_customer dcust ON dcust.customer_name = src.customer_name and dcust.customer_email = src.customer_email 
 JOIN dwh.d_product dp ON dp.product_name = src.product_name and dp.product_description = src.product_description and dp.product_price = src.product_price;
 
-/* обновление существующих записей и добавление новых в dwh.f_order */
+/* РѕР±РЅРѕРІР»РµРЅРёРµ СЃСѓС‰РµСЃС‚РІСѓСЋС‰РёС… Р·Р°РїРёСЃРµР№ Рё РґРѕР±Р°РІР»РµРЅРёРµ РЅРѕРІС‹С… РІ dwh.f_order */
 MERGE INTO dwh.f_order f
 USING tmp_sources_fact t
 ON f.product_id = t.product_id AND f.craftsman_id = t.craftsman_id AND f.customer_id = t.customer_id AND f.order_created_date = t.order_created_date 
@@ -147,33 +147,33 @@ WHEN NOT MATCHED THEN
   VALUES (t.product_id, t.craftsman_id, t.customer_id, t.order_created_date, t.order_completion_date, t.order_status, current_timestamp);
   
 
--- DDL витрины данных
+-- DDL РІРёС‚СЂРёРЅС‹ РґР°РЅРЅС‹С…
 DROP TABLE IF EXISTS dwh.customer_report_datamart;
 
 CREATE TABLE IF NOT EXISTS dwh.customer_report_datamart (
-    id BIGINT GENERATED ALWAYS AS IDENTITY NOT NULL, -- идентификатор записи
-    customer_id BIGINT NOT NULL, -- идентификатор клиента
-    customer_name VARCHAR NOT NULL, -- Ф.И.О. клиента
-    customer_address VARCHAR NOT NULL, -- адрес клиента
-    customer_birthday DATE NOT NULL, -- дата рождения клиента
-    customer_email VARCHAR NOT NULL, -- электронная почта клиента
-    customer_money NUMERIC(15,2) NOT NULL, -- сумма, которую заработал клиент (-10% на платформы) за месяц
-    platform_money BIGINT NOT NULL, -- сумма, которую заработала платформа от продаж клиента за месяц
-    count_order BIGINT NOT NULL, -- количество заказов у клиента за месяц
-    avg_price_order NUMERIC(10,2) NOT NULL, -- средняя стоимость одного заказа у клиента за месяц
-    median_time_order_completed NUMERIC(10,1), -- медианное время в днях от момента создания заказа до его завершения за месяц
-    top_product_category VARCHAR NOT NULL, -- самая популярная категория товаров у этого клиента за месяц
+    id BIGINT GENERATED ALWAYS AS IDENTITY NOT NULL, -- РёРґРµРЅС‚РёС„РёРєР°С‚РѕСЂ Р·Р°РїРёСЃРё
+    customer_id BIGINT NOT NULL, -- РёРґРµРЅС‚РёС„РёРєР°С‚РѕСЂ РєР»РёРµРЅС‚Р°
+    customer_name VARCHAR NOT NULL, -- Р¤.Р.Рћ. РєР»РёРµРЅС‚Р°
+    customer_address VARCHAR NOT NULL, -- Р°РґСЂРµСЃ РєР»РёРµРЅС‚Р°
+    customer_birthday DATE NOT NULL, -- РґР°С‚Р° СЂРѕР¶РґРµРЅРёСЏ РєР»РёРµРЅС‚Р°
+    customer_email VARCHAR NOT NULL, -- СЌР»РµРєС‚СЂРѕРЅРЅР°СЏ РїРѕС‡С‚Р° РєР»РёРµРЅС‚Р°
+    customer_money NUMERIC(15,2) NOT NULL, -- СЃСѓРјРјР°, РєРѕС‚РѕСЂСѓСЋ Р·Р°СЂР°Р±РѕС‚Р°Р» РєР»РёРµРЅС‚ (-10% РЅР° РїР»Р°С‚С„РѕСЂРјС‹) Р·Р° РјРµСЃСЏС†
+    platform_money BIGINT NOT NULL, -- СЃСѓРјРјР°, РєРѕС‚РѕСЂСѓСЋ Р·Р°СЂР°Р±РѕС‚Р°Р»Р° РїР»Р°С‚С„РѕСЂРјР° РѕС‚ РїСЂРѕРґР°Р¶ РєР»РёРµРЅС‚Р° Р·Р° РјРµСЃСЏС†
+    count_order BIGINT NOT NULL, -- РєРѕР»РёС‡РµСЃС‚РІРѕ Р·Р°РєР°Р·РѕРІ Сѓ РєР»РёРµРЅС‚Р° Р·Р° РјРµСЃСЏС†
+    avg_price_order NUMERIC(10,2) NOT NULL, -- СЃСЂРµРґРЅСЏСЏ СЃС‚РѕРёРјРѕСЃС‚СЊ РѕРґРЅРѕРіРѕ Р·Р°РєР°Р·Р° Сѓ РєР»РёРµРЅС‚Р° Р·Р° РјРµСЃСЏС†
+    median_time_order_completed NUMERIC(10,1), -- РјРµРґРёР°РЅРЅРѕРµ РІСЂРµРјСЏ РІ РґРЅСЏС… РѕС‚ РјРѕРјРµРЅС‚Р° СЃРѕР·РґР°РЅРёСЏ Р·Р°РєР°Р·Р° РґРѕ РµРіРѕ Р·Р°РІРµСЂС€РµРЅРёСЏ Р·Р° РјРµСЃСЏС†
+    top_product_category VARCHAR NOT NULL, -- СЃР°РјР°СЏ РїРѕРїСѓР»СЏСЂРЅР°СЏ РєР°С‚РµРіРѕСЂРёСЏ С‚РѕРІР°СЂРѕРІ Сѓ СЌС‚РѕРіРѕ РєР»РёРµРЅС‚Р° Р·Р° РјРµСЃСЏС†
     top_craftsman_id varchar NOT NULL,
-    count_order_created BIGINT NOT NULL, -- количество созданных заказов за месяц
-    count_order_in_progress BIGINT NOT NULL, -- количество заказов в процессе изготовки за месяц
-    count_order_delivery BIGINT NOT NULL, -- количество заказов в доставке за месяц
-    count_order_done BIGINT NOT NULL, -- количество завершённых заказов за месяц
-    count_order_not_done BIGINT NOT NULL, -- количество незавершённых заказов за месяц
-    report_period VARCHAR NOT NULL, -- отчётный период год и месяц
+    count_order_created BIGINT NOT NULL, -- РєРѕР»РёС‡РµСЃС‚РІРѕ СЃРѕР·РґР°РЅРЅС‹С… Р·Р°РєР°Р·РѕРІ Р·Р° РјРµСЃСЏС†
+    count_order_in_progress BIGINT NOT NULL, -- РєРѕР»РёС‡РµСЃС‚РІРѕ Р·Р°РєР°Р·РѕРІ РІ РїСЂРѕС†РµСЃСЃРµ РёР·РіРѕС‚РѕРІРєРё Р·Р° РјРµСЃСЏС†
+    count_order_delivery BIGINT NOT NULL, -- РєРѕР»РёС‡РµСЃС‚РІРѕ Р·Р°РєР°Р·РѕРІ РІ РґРѕСЃС‚Р°РІРєРµ Р·Р° РјРµСЃСЏС†
+    count_order_done BIGINT NOT NULL, -- РєРѕР»РёС‡РµСЃС‚РІРѕ Р·Р°РІРµСЂС€С‘РЅРЅС‹С… Р·Р°РєР°Р·РѕРІ Р·Р° РјРµСЃСЏС†
+    count_order_not_done BIGINT NOT NULL, -- РєРѕР»РёС‡РµСЃС‚РІРѕ РЅРµР·Р°РІРµСЂС€С‘РЅРЅС‹С… Р·Р°РєР°Р·РѕРІ Р·Р° РјРµСЃСЏС†
+    report_period VARCHAR NOT NULL, -- РѕС‚С‡С‘С‚РЅС‹Р№ РїРµСЂРёРѕРґ РіРѕРґ Рё РјРµСЃСЏС†
     CONSTRAINT customer_report_datamart_pk PRIMARY KEY (id)
 );
 
--- DDL таблицы инкрементальных загрузок
+-- DDL С‚Р°Р±Р»РёС†С‹ РёРЅРєСЂРµРјРµРЅС‚Р°Р»СЊРЅС‹С… Р·Р°РіСЂСѓР·РѕРє
 DROP TABLE IF EXISTS dwh.load_dates_customer_report_datamart;
 
 CREATE TABLE IF NOT EXISTS dwh.load_dates_customer_report_datamart (
@@ -183,7 +183,7 @@ CREATE TABLE IF NOT EXISTS dwh.load_dates_customer_report_datamart (
 );
 
 WITH
-dwh_delta AS ( -- определяем, какие данные были изменены в витрине или добавлены в DWH. Формируем дельту изменений
+dwh_delta AS ( -- РѕРїСЂРµРґРµР»СЏРµРј, РєР°РєРёРµ РґР°РЅРЅС‹Рµ Р±С‹Р»Рё РёР·РјРµРЅРµРЅС‹ РІ РІРёС‚СЂРёРЅРµ РёР»Рё РґРѕР±Р°РІР»РµРЅС‹ РІ DWH. Р¤РѕСЂРјРёСЂСѓРµРј РґРµР»СЊС‚Сѓ РёР·РјРµРЅРµРЅРёР№
     SELECT     
             dcs.customer_id AS customer_id,
             dcs.customer_name AS customer_name,
@@ -212,13 +212,13 @@ dwh_delta AS ( -- определяем, какие данные были изменены в витрине или добавлены
                             (dcs.load_dttm > (SELECT COALESCE(MAX(load_dttm),'1900-01-01') FROM dwh.load_dates_customer_report_datamart)) OR
                             (dp.load_dttm > (SELECT COALESCE(MAX(load_dttm),'1900-01-01') FROM dwh.load_dates_customer_report_datamart))
 ),
-dwh_update_delta AS ( -- делаем выборку клиентов ручной работы, по которым были изменения в DWH. По этим клиентам данные в витрине нужно будет обновить
+dwh_update_delta AS ( -- РґРµР»Р°РµРј РІС‹Р±РѕСЂРєСѓ РєР»РёРµРЅС‚РѕРІ СЂСѓС‡РЅРѕР№ СЂР°Р±РѕС‚С‹, РїРѕ РєРѕС‚РѕСЂС‹Рј Р±С‹Р»Рё РёР·РјРµРЅРµРЅРёСЏ РІ DWH. РџРѕ СЌС‚РёРј РєР»РёРµРЅС‚Р°Рј РґР°РЅРЅС‹Рµ РІ РІРёС‚СЂРёРЅРµ РЅСѓР¶РЅРѕ Р±СѓРґРµС‚ РѕР±РЅРѕРІРёС‚СЊ
     SELECT     
             dd.exist_customer_id AS customer_id
             FROM dwh_delta dd 
                 WHERE dd.exist_customer_id IS NOT NULL        
 ),
-dwh_delta_insert_result AS ( -- делаем расчёт витрины по новым данным. Этой информации по клиентам в рамках расчётного периода раньше не было, это новые данные. Их можно просто вставить (insert) в витрину без обновления
+dwh_delta_insert_result AS ( -- РґРµР»Р°РµРј СЂР°СЃС‡С‘С‚ РІРёС‚СЂРёРЅС‹ РїРѕ РЅРѕРІС‹Рј РґР°РЅРЅС‹Рј. Р­С‚РѕР№ РёРЅС„РѕСЂРјР°С†РёРё РїРѕ РєР»РёРµРЅС‚Р°Рј РІ СЂР°РјРєР°С… СЂР°СЃС‡С‘С‚РЅРѕРіРѕ РїРµСЂРёРѕРґР° СЂР°РЅСЊС€Рµ РЅРµ Р±С‹Р»Рѕ, СЌС‚Рѕ РЅРѕРІС‹Рµ РґР°РЅРЅС‹Рµ. РС… РјРѕР¶РЅРѕ РїСЂРѕСЃС‚Рѕ РІСЃС‚Р°РІРёС‚СЊ (insert) РІ РІРёС‚СЂРёРЅСѓ Р±РµР· РѕР±РЅРѕРІР»РµРЅРёСЏ
     SELECT  
             T4.customer_id AS customer_id,
             T4.customer_name AS customer_name,
@@ -239,11 +239,11 @@ dwh_delta_insert_result AS ( -- делаем расчёт витрины по новым данным. Этой инфо
             T4.count_order_not_done AS count_order_not_done,
             T4.report_period AS report_period 
             FROM (
-                SELECT     -- в этой выборке объединяем две внутренние выборки по расчёту столбцов витрины и применяем оконную функцию для определения самой популярной категории товаров
+                SELECT     -- РІ СЌС‚РѕР№ РІС‹Р±РѕСЂРєРµ РѕР±СЉРµРґРёРЅСЏРµРј РґРІРµ РІРЅСѓС‚СЂРµРЅРЅРёРµ РІС‹Р±РѕСЂРєРё РїРѕ СЂР°СЃС‡С‘С‚Сѓ СЃС‚РѕР»Р±С†РѕРІ РІРёС‚СЂРёРЅС‹ Рё РїСЂРёРјРµРЅСЏРµРј РѕРєРѕРЅРЅСѓСЋ С„СѓРЅРєС†РёСЋ РґР»СЏ РѕРїСЂРµРґРµР»РµРЅРёСЏ СЃР°РјРѕР№ РїРѕРїСѓР»СЏСЂРЅРѕР№ РєР°С‚РµРіРѕСЂРёРё С‚РѕРІР°СЂРѕРІ
                         *,
                         ROW_NUMBER() OVER(PARTITION BY T2.customer_id ORDER BY count_product DESC, count_craftsman DESC) AS rank_count
                         FROM ( 
-                            SELECT -- в этой выборке делаем расчёт по большинству столбцов, так как все они требуют одной и той же группировки, кроме столбца с самой популярной категорией товаров у клиента. Для этого столбца сделаем отдельную выборку с другой группировкой и выполним JOIN
+                            SELECT -- РІ СЌС‚РѕР№ РІС‹Р±РѕСЂРєРµ РґРµР»Р°РµРј СЂР°СЃС‡С‘С‚ РїРѕ Р±РѕР»СЊС€РёРЅСЃС‚РІСѓ СЃС‚РѕР»Р±С†РѕРІ, С‚Р°Рє РєР°Рє РІСЃРµ РѕРЅРё С‚СЂРµР±СѓСЋС‚ РѕРґРЅРѕР№ Рё С‚РѕР№ Р¶Рµ РіСЂСѓРїРїРёСЂРѕРІРєРё, РєСЂРѕРјРµ СЃС‚РѕР»Р±С†Р° СЃ СЃР°РјРѕР№ РїРѕРїСѓР»СЏСЂРЅРѕР№ РєР°С‚РµРіРѕСЂРёРµР№ С‚РѕРІР°СЂРѕРІ Сѓ РєР»РёРµРЅС‚Р°. Р”Р»СЏ СЌС‚РѕРіРѕ СЃС‚РѕР»Р±С†Р° СЃРґРµР»Р°РµРј РѕС‚РґРµР»СЊРЅСѓСЋ РІС‹Р±РѕСЂРєСѓ СЃ РґСЂСѓРіРѕР№ РіСЂСѓРїРїРёСЂРѕРІРєРѕР№ Рё РІС‹РїРѕР»РЅРёРј JOIN
                                 T1.customer_id AS customer_id,
                                 T1.customer_name AS customer_name,
                                 T1.customer_address AS customer_address,
@@ -265,7 +265,7 @@ dwh_delta_insert_result AS ( -- делаем расчёт витрины по новым данным. Этой инфо
                                         GROUP BY T1.customer_id, T1.customer_name, T1.customer_address, T1.customer_birthday, T1.customer_email, T1.report_period
                             ) AS T2 
                                 INNER JOIN (
-                                    SELECT     -- Эта выборка поможет определить самый популярный товар у клиента ручной работы. Эта выборка не делается в предыдущем запросе, так как нужна другая группировка. Для данных этой выборки можно применить оконную функцию, которая и покажет самую популярную категорию товаров у клиента
+                                    SELECT     -- Р­С‚Р° РІС‹Р±РѕСЂРєР° РїРѕРјРѕР¶РµС‚ РѕРїСЂРµРґРµР»РёС‚СЊ СЃР°РјС‹Р№ РїРѕРїСѓР»СЏСЂРЅС‹Р№ С‚РѕРІР°СЂ Сѓ РєР»РёРµРЅС‚Р° СЂСѓС‡РЅРѕР№ СЂР°Р±РѕС‚С‹. Р­С‚Р° РІС‹Р±РѕСЂРєР° РЅРµ РґРµР»Р°РµС‚СЃСЏ РІ РїСЂРµРґС‹РґСѓС‰РµРј Р·Р°РїСЂРѕСЃРµ, С‚Р°Рє РєР°Рє РЅСѓР¶РЅР° РґСЂСѓРіР°СЏ РіСЂСѓРїРїРёСЂРѕРІРєР°. Р”Р»СЏ РґР°РЅРЅС‹С… СЌС‚РѕР№ РІС‹Р±РѕСЂРєРё РјРѕР¶РЅРѕ РїСЂРёРјРµРЅРёС‚СЊ РѕРєРѕРЅРЅСѓСЋ С„СѓРЅРєС†РёСЋ, РєРѕС‚РѕСЂР°СЏ Рё РїРѕРєР°Р¶РµС‚ СЃР°РјСѓСЋ РїРѕРїСѓР»СЏСЂРЅСѓСЋ РєР°С‚РµРіРѕСЂРёСЋ С‚РѕРІР°СЂРѕРІ Сѓ РєР»РёРµРЅС‚Р°
                                             dd.customer_id AS customer_id_for_product_type, 
                                             dd.product_type, 
                                             COUNT(dd.product_id) AS count_product
@@ -273,16 +273,16 @@ dwh_delta_insert_result AS ( -- делаем расчёт витрины по новым данным. Этой инфо
                                                 GROUP BY dd.customer_id, dd.product_type
                                                     ORDER BY count_product DESC) AS T3 ON T2.customer_id = T3.customer_id_for_product_type
                                 INNER JOIN (
-                                    SELECT     -- Эта выборка поможет определить самый популярный товар у клиента ручной работы. Эта выборка не делается в предыдущем запросе, так как нужна другая группировка. Для данных этой выборки можно применить оконную функцию, которая и покажет самую популярную категорию товаров у клиента
+                                    SELECT     -- Р­С‚Р° РІС‹Р±РѕСЂРєР° РїРѕРјРѕР¶РµС‚ РѕРїСЂРµРґРµР»РёС‚СЊ СЃР°РјС‹Р№ РїРѕРїСѓР»СЏСЂРЅС‹Р№ С‚РѕРІР°СЂ Сѓ РєР»РёРµРЅС‚Р° СЂСѓС‡РЅРѕР№ СЂР°Р±РѕС‚С‹. Р­С‚Р° РІС‹Р±РѕСЂРєР° РЅРµ РґРµР»Р°РµС‚СЃСЏ РІ РїСЂРµРґС‹РґСѓС‰РµРј Р·Р°РїСЂРѕСЃРµ, С‚Р°Рє РєР°Рє РЅСѓР¶РЅР° РґСЂСѓРіР°СЏ РіСЂСѓРїРїРёСЂРѕРІРєР°. Р”Р»СЏ РґР°РЅРЅС‹С… СЌС‚РѕР№ РІС‹Р±РѕСЂРєРё РјРѕР¶РЅРѕ РїСЂРёРјРµРЅРёС‚СЊ РѕРєРѕРЅРЅСѓСЋ С„СѓРЅРєС†РёСЋ, РєРѕС‚РѕСЂР°СЏ Рё РїРѕРєР°Р¶РµС‚ СЃР°РјСѓСЋ РїРѕРїСѓР»СЏСЂРЅСѓСЋ РєР°С‚РµРіРѕСЂРёСЋ С‚РѕРІР°СЂРѕРІ Сѓ РєР»РёРµРЅС‚Р°
                                             dd.customer_id AS customer_id_for_product_type, 
                                             dd.craftsman_id AS craftsman_id, 
                                             COUNT(DISTINCT dd.order_id) AS count_craftsman
                                             FROM dwh_delta AS dd
                                                 GROUP BY dd.customer_id, dd.craftsman_id
                                                     ORDER BY count_craftsman DESC) AS T3_ ON T2.customer_id = T3_.customer_id_for_product_type
-                ) AS T4 WHERE T4.rank_count = 1 ORDER BY report_period -- условие помогает оставить в выборке первую по популярности категорию товаров
+                ) AS T4 WHERE T4.rank_count = 1 ORDER BY report_period -- СѓСЃР»РѕРІРёРµ РїРѕРјРѕРіР°РµС‚ РѕСЃС‚Р°РІРёС‚СЊ РІ РІС‹Р±РѕСЂРєРµ РїРµСЂРІСѓСЋ РїРѕ РїРѕРїСѓР»СЏСЂРЅРѕСЃС‚Рё РєР°С‚РµРіРѕСЂРёСЋ С‚РѕРІР°СЂРѕРІ
 ),
-dwh_delta_update_result AS ( -- делаем перерасчёт для существующих записей витринs, так как данные обновились за отчётные периоды. Логика похожа на insert, но нужно достать конкретные данные из DWH
+dwh_delta_update_result AS ( -- РґРµР»Р°РµРј РїРµСЂРµСЂР°СЃС‡С‘С‚ РґР»СЏ СЃСѓС‰РµСЃС‚РІСѓСЋС‰РёС… Р·Р°РїРёСЃРµР№ РІРёС‚СЂРёРЅs, С‚Р°Рє РєР°Рє РґР°РЅРЅС‹Рµ РѕР±РЅРѕРІРёР»РёСЃСЊ Р·Р° РѕС‚С‡С‘С‚РЅС‹Рµ РїРµСЂРёРѕРґС‹. Р›РѕРіРёРєР° РїРѕС…РѕР¶Р° РЅР° insert, РЅРѕ РЅСѓР¶РЅРѕ РґРѕСЃС‚Р°С‚СЊ РєРѕРЅРєСЂРµС‚РЅС‹Рµ РґР°РЅРЅС‹Рµ РёР· DWH
     SELECT 
             T4.customer_id AS customer_id,
             T4.customer_name AS customer_name,
@@ -303,11 +303,11 @@ dwh_delta_update_result AS ( -- делаем перерасчёт для существующих записей витри
             T4.count_order_not_done AS count_order_not_done,
             T4.report_period AS report_period 
             FROM (
-                SELECT     -- в этой выборке объединяем две внутренние выборки по расчёту столбцов витрины и применяем оконную функцию для определения самой популярной категории товаров
+                SELECT     -- РІ СЌС‚РѕР№ РІС‹Р±РѕСЂРєРµ РѕР±СЉРµРґРёРЅСЏРµРј РґРІРµ РІРЅСѓС‚СЂРµРЅРЅРёРµ РІС‹Р±РѕСЂРєРё РїРѕ СЂР°СЃС‡С‘С‚Сѓ СЃС‚РѕР»Р±С†РѕРІ РІРёС‚СЂРёРЅС‹ Рё РїСЂРёРјРµРЅСЏРµРј РѕРєРѕРЅРЅСѓСЋ С„СѓРЅРєС†РёСЋ РґР»СЏ РѕРїСЂРµРґРµР»РµРЅРёСЏ СЃР°РјРѕР№ РїРѕРїСѓР»СЏСЂРЅРѕР№ РєР°С‚РµРіРѕСЂРёРё С‚РѕРІР°СЂРѕРІ
                         *,
                         ROW_NUMBER() OVER(PARTITION BY T2.customer_id ORDER BY count_product DESC, count_craftsman DESC) AS rank_count 
                         FROM (
-                            SELECT -- в этой выборке делаем расчёт по большинству столбцов, так как все они требуют одной и той же группировки, кроме столбца с самой популярной категорией товаров у клиента. Для этого столбца сделаем отдельную выборку с другой группировкой и выполним JOIN
+                            SELECT -- РІ СЌС‚РѕР№ РІС‹Р±РѕСЂРєРµ РґРµР»Р°РµРј СЂР°СЃС‡С‘С‚ РїРѕ Р±РѕР»СЊС€РёРЅСЃС‚РІСѓ СЃС‚РѕР»Р±С†РѕРІ, С‚Р°Рє РєР°Рє РІСЃРµ РѕРЅРё С‚СЂРµР±СѓСЋС‚ РѕРґРЅРѕР№ Рё С‚РѕР№ Р¶Рµ РіСЂСѓРїРїРёСЂРѕРІРєРё, РєСЂРѕРјРµ СЃС‚РѕР»Р±С†Р° СЃ СЃР°РјРѕР№ РїРѕРїСѓР»СЏСЂРЅРѕР№ РєР°С‚РµРіРѕСЂРёРµР№ С‚РѕРІР°СЂРѕРІ Сѓ РєР»РёРµРЅС‚Р°. Р”Р»СЏ СЌС‚РѕРіРѕ СЃС‚РѕР»Р±С†Р° СЃРґРµР»Р°РµРј РѕС‚РґРµР»СЊРЅСѓСЋ РІС‹Р±РѕСЂРєСѓ СЃ РґСЂСѓРіРѕР№ РіСЂСѓРїРїРёСЂРѕРІРєРѕР№ Рё РІС‹РїРѕР»РЅРёРј JOIN
                                 T1.customer_id AS customer_id,
                                 T1.customer_name AS customer_name,
                                 T1.customer_address AS customer_address,
@@ -325,7 +325,7 @@ dwh_delta_update_result AS ( -- делаем перерасчёт для существующих записей витри
                                 SUM(CASE WHEN T1.order_status != 'done' THEN 1 ELSE 0 END) AS count_order_not_done,
                                 T1.report_period AS report_period
                                 FROM (
-                                    SELECT     -- в этой выборке достаём из DWH обновлённые или новые данные по клиентам, которые уже есть в витрине
+                                    SELECT     -- РІ СЌС‚РѕР№ РІС‹Р±РѕСЂРєРµ РґРѕСЃС‚Р°С‘Рј РёР· DWH РѕР±РЅРѕРІР»С‘РЅРЅС‹Рµ РёР»Рё РЅРѕРІС‹Рµ РґР°РЅРЅС‹Рµ РїРѕ РєР»РёРµРЅС‚Р°Рј, РєРѕС‚РѕСЂС‹Рµ СѓР¶Рµ РµСЃС‚СЊ РІ РІРёС‚СЂРёРЅРµ
                                             dcs.customer_id AS customer_id,
                                             dcs.customer_name AS customer_name,
                                             dcs.customer_address AS customer_address,
@@ -347,7 +347,7 @@ dwh_delta_update_result AS ( -- делаем перерасчёт для существующих записей витри
                                     GROUP BY T1.customer_id, T1.customer_name, T1.customer_address, T1.customer_birthday, T1.customer_email, T1.report_period
                             ) AS T2 
                                 INNER JOIN (
-                                    SELECT     -- Эта выборка поможет определить самый популярный товар у клиента. Эта выборка не делается в предыдущем запросе, так как нужна другая группировка. Для данных этой выборки можно применить оконную функцию, которая и покажет самую популярную категорию товаров у клиента
+                                    SELECT     -- Р­С‚Р° РІС‹Р±РѕСЂРєР° РїРѕРјРѕР¶РµС‚ РѕРїСЂРµРґРµР»РёС‚СЊ СЃР°РјС‹Р№ РїРѕРїСѓР»СЏСЂРЅС‹Р№ С‚РѕРІР°СЂ Сѓ РєР»РёРµРЅС‚Р°. Р­С‚Р° РІС‹Р±РѕСЂРєР° РЅРµ РґРµР»Р°РµС‚СЃСЏ РІ РїСЂРµРґС‹РґСѓС‰РµРј Р·Р°РїСЂРѕСЃРµ, С‚Р°Рє РєР°Рє РЅСѓР¶РЅР° РґСЂСѓРіР°СЏ РіСЂСѓРїРїРёСЂРѕРІРєР°. Р”Р»СЏ РґР°РЅРЅС‹С… СЌС‚РѕР№ РІС‹Р±РѕСЂРєРё РјРѕР¶РЅРѕ РїСЂРёРјРµРЅРёС‚СЊ РѕРєРѕРЅРЅСѓСЋ С„СѓРЅРєС†РёСЋ, РєРѕС‚РѕСЂР°СЏ Рё РїРѕРєР°Р¶РµС‚ СЃР°РјСѓСЋ РїРѕРїСѓР»СЏСЂРЅСѓСЋ РєР°С‚РµРіРѕСЂРёСЋ С‚РѕРІР°СЂРѕРІ Сѓ РєР»РёРµРЅС‚Р°
                                             dd.customer_id AS customer_id_for_product_type, 
                                             dd.product_type, 
                                             COUNT(dd.product_id) AS count_product
@@ -355,7 +355,7 @@ dwh_delta_update_result AS ( -- делаем перерасчёт для существующих записей витри
                                                 GROUP BY dd.customer_id, dd.product_type
                                                     ORDER BY count_product DESC) AS T3 ON T2.customer_id = T3.customer_id_for_product_type
                                 INNER JOIN (
-                                    SELECT     -- Эта выборка поможет определить самый популярный товар у клиента ручной работы. Эта выборка не делается в предыдущем запросе, так как нужна другая группировка. Для данных этой выборки можно применить оконную функцию, которая и покажет самую популярную категорию товаров у клиента
+                                    SELECT     -- Р­С‚Р° РІС‹Р±РѕСЂРєР° РїРѕРјРѕР¶РµС‚ РѕРїСЂРµРґРµР»РёС‚СЊ СЃР°РјС‹Р№ РїРѕРїСѓР»СЏСЂРЅС‹Р№ С‚РѕРІР°СЂ Сѓ РєР»РёРµРЅС‚Р° СЂСѓС‡РЅРѕР№ СЂР°Р±РѕС‚С‹. Р­С‚Р° РІС‹Р±РѕСЂРєР° РЅРµ РґРµР»Р°РµС‚СЃСЏ РІ РїСЂРµРґС‹РґСѓС‰РµРј Р·Р°РїСЂРѕСЃРµ, С‚Р°Рє РєР°Рє РЅСѓР¶РЅР° РґСЂСѓРіР°СЏ РіСЂСѓРїРїРёСЂРѕРІРєР°. Р”Р»СЏ РґР°РЅРЅС‹С… СЌС‚РѕР№ РІС‹Р±РѕСЂРєРё РјРѕР¶РЅРѕ РїСЂРёРјРµРЅРёС‚СЊ РѕРєРѕРЅРЅСѓСЋ С„СѓРЅРєС†РёСЋ, РєРѕС‚РѕСЂР°СЏ Рё РїРѕРєР°Р¶РµС‚ СЃР°РјСѓСЋ РїРѕРїСѓР»СЏСЂРЅСѓСЋ РєР°С‚РµРіРѕСЂРёСЋ С‚РѕРІР°СЂРѕРІ Сѓ РєР»РёРµРЅС‚Р°
                                             dd.customer_id AS customer_id_for_product_type, 
                                             dd.craftsman_id AS craftsman_id, 
                                             COUNT(DISTINCT dd.order_id) AS count_craftsman
@@ -364,7 +364,7 @@ dwh_delta_update_result AS ( -- делаем перерасчёт для существующих записей витри
                                                     ORDER BY count_craftsman DESC) AS T3_ ON T2.customer_id = T3_.customer_id_for_product_type
                 ) AS T4 WHERE T4.rank_count = 1 ORDER BY report_period
 ),
-insert_delta AS ( -- выполняем insert новых расчитанных данных для витрины 
+insert_delta AS ( -- РІС‹РїРѕР»РЅСЏРµРј insert РЅРѕРІС‹С… СЂР°СЃС‡РёС‚Р°РЅРЅС‹С… РґР°РЅРЅС‹С… РґР»СЏ РІРёС‚СЂРёРЅС‹ 
     INSERT INTO dwh.customer_report_datamart (
         customer_id,
         customer_name,
@@ -405,7 +405,7 @@ insert_delta AS ( -- выполняем insert новых расчитанных данных для витрины
             report_period 
             FROM dwh_delta_insert_result
 ),
-update_delta AS ( -- выполняем обновление показателей в отчёте по уже существующим клиентам
+update_delta AS ( -- РІС‹РїРѕР»РЅСЏРµРј РѕР±РЅРѕРІР»РµРЅРёРµ РїРѕРєР°Р·Р°С‚РµР»РµР№ РІ РѕС‚С‡С‘С‚Рµ РїРѕ СѓР¶Рµ СЃСѓС‰РµСЃС‚РІСѓСЋС‰РёРј РєР»РёРµРЅС‚Р°Рј
     UPDATE dwh.customer_report_datamart SET
         customer_name = updates.customer_name, 
         customer_address = updates.customer_address, 
@@ -447,7 +447,7 @@ update_delta AS ( -- выполняем обновление показателей в отчёте по уже существующ
             FROM dwh_delta_update_result) AS updates
     WHERE dwh.customer_report_datamart.customer_id = updates.customer_id
 ),
-insert_load_date AS ( -- делаем запись в таблицу загрузок о том, когда была совершена загрузка, чтобы в следующий раз взять данные, которые будут добавлены или изменены после этой даты
+insert_load_date AS ( -- РґРµР»Р°РµРј Р·Р°РїРёСЃСЊ РІ С‚Р°Р±Р»РёС†Сѓ Р·Р°РіСЂСѓР·РѕРє Рѕ С‚РѕРј, РєРѕРіРґР° Р±С‹Р»Р° СЃРѕРІРµСЂС€РµРЅР° Р·Р°РіСЂСѓР·РєР°, С‡С‚РѕР±С‹ РІ СЃР»РµРґСѓСЋС‰РёР№ СЂР°Р· РІР·СЏС‚СЊ РґР°РЅРЅС‹Рµ, РєРѕС‚РѕСЂС‹Рµ Р±СѓРґСѓС‚ РґРѕР±Р°РІР»РµРЅС‹ РёР»Рё РёР·РјРµРЅРµРЅС‹ РїРѕСЃР»Рµ СЌС‚РѕР№ РґР°С‚С‹
     INSERT INTO dwh.load_dates_customer_report_datamart (
         load_dttm
     )
@@ -456,4 +456,4 @@ insert_load_date AS ( -- делаем запись в таблицу загрузок о том, когда была сове
                     COALESCE(MAX(products_load_dttm), NOW())) 
         FROM dwh_delta
 )
-SELECT 'increment datamart'; -- инициализируем запрос CTE
+SELECT 'increment datamart'; -- РёРЅРёС†РёР°Р»РёР·РёСЂСѓРµРј Р·Р°РїСЂРѕСЃ CTE
